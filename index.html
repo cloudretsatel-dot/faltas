@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mis faltas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1E2029">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#EEF0F5; --surface:#FFFFFF; --ink:#1A1C24; --muted:#5D6272; --line:#D9DCE5;
+  --danger:#C62828; --danger-bg:#FDECEC; --ok:#2E7D32;
+  --prog:#8E24AA; --bd:#0B8043; --calc:#3F51B5;
+  color-scheme: light;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#14151B; --surface:#1E2029; --ink:#ECEDF2; --muted:#A3A7B5; --line:#2F323D;
+    --danger:#FF8A80; --danger-bg:#3A1F22; --ok:#81C995;
+    --prog:#CE93D8; --bd:#81C995; --calc:#9FA8FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#14151B; --surface:#1E2029; --ink:#ECEDF2; --muted:#A3A7B5; --line:#2F323D;
+  --danger:#FF8A80; --danger-bg:#3A1F22; --ok:#81C995;
+  --prog:#CE93D8; --bd:#81C995; --calc:#9FA8FF;
+  color-scheme: dark;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Familjen Grotesk",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45;-webkit-font-smoothing:antialiased}
+main{max-width:32rem;margin:0 auto;padding:1.5rem 1rem 3rem}
+header h1{font-size:2.4rem;line-height:1;margin:0 0 .4rem;font-weight:700;letter-spacing:-.02em}
+header p{margin:0;color:var(--muted);font-size:.98rem}
+#status{font-size:.85rem;color:var(--muted);min-height:1.2em;margin:.6rem 0 1.2rem}
+
+.course{background:var(--surface);border-radius:18px;padding:1.1rem 1.1rem 1rem;margin-bottom:1rem;border-left:6px solid var(--c);position:relative}
+.course h2{margin:0;font-size:1.2rem;font-weight:600;line-height:1.25}
+.course .when{margin:.15rem 0 .9rem;color:var(--muted);font-size:.9rem}
+
+.slots{display:flex;gap:.6rem;align-items:center;margin-bottom:.7rem}
+.slot{width:2.6rem;height:2.6rem;border-radius:50%;border:2.5px dashed var(--line);display:grid;place-items:center;transition:background .25s,border-color .25s}
+.slot.on{background:var(--c);border:2.5px solid var(--c)}
+.slot.on svg{display:block}
+.slot svg{display:none;width:1.2rem;height:1.2rem;stroke:var(--surface);stroke-width:3;fill:none;stroke-linecap:round}
+.slot.over{background:var(--danger);border-color:var(--danger)}
+.count{margin-left:.4rem;font-size:.98rem;font-weight:500}
+.count.full{color:var(--danger)}
+
+.dates{display:flex;flex-wrap:wrap;gap:.4rem;margin:0 0 .9rem;padding:0;list-style:none}
+.dates button{font:inherit;font-size:.85rem;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:.3rem .7rem;cursor:pointer}
+.dates button:hover{border-color:var(--c)}
+.dates .hint{font-size:.85rem;color:var(--muted)}
+
+.add{font:inherit;font-weight:600;font-size:1rem;width:100%;padding:.75rem;border-radius:12px;border:0;background:var(--c);color:var(--surface);cursor:pointer}
+.add:active{transform:scale(.99)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--c, var(--calc));outline-offset:2px}
+
+.banner{background:var(--danger-bg);color:var(--danger);border-radius:10px;padding:.55rem .75rem;font-size:.9rem;margin-bottom:.8rem;font-weight:500}
+
+dialog{border:0;border-radius:20px;padding:1.3rem;width:min(26rem,calc(100% - 2rem));background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgba(10,12,20,.5)}
+dialog h3{margin:0 0 .3rem;font-size:1.2rem}
+dialog p{margin:0 0 1rem;color:var(--muted);font-size:.95rem}
+dialog label{display:block;font-size:.9rem;margin-bottom:.3rem;color:var(--muted)}
+dialog input[type=date]{font:inherit;font-size:1.05rem;width:100%;padding:.6rem .7rem;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.row{display:flex;gap:.6rem;margin-top:1.1rem}
+.row button{flex:1;font:inherit;font-weight:600;padding:.7rem;border-radius:12px;cursor:pointer}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.primary{border:0;background:var(--c, var(--calc));color:var(--surface)}
+.primary.del{background:var(--danger)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Mis faltas</h1>
+    <p>Máximo 3 por curso. Toca una fecha para borrarla.</p>
+  </header>
+  <div id="status" aria-live="polite"></div>
+  <div id="list"></div>
+</main>
+
+<dialog id="dlg">
+  <h3 id="dlgTitle"></h3>
+  <p id="dlgText"></p>
+  <div id="dlgDate">
+    <label for="dateIn">Fecha de la falta</label>
+    <input type="date" id="dateIn">
+  </div>
+  <div class="row">
+    <button class="ghost" id="cancelBtn" type="button">Cancelar</button>
+    <button class="primary" id="okBtn" type="button"></button>
+  </div>
+</dialog>
+
+<script>
+(function(){
+  var MAX = 3;
+  var COURSES = [
+    {id:"prog", name:"Fundamentos de Programación 2", when:"Lunes, 7:00 a 11:00 p. m."},
+    {id:"bd",   name:"Diseño de Base de Datos",        when:"Miércoles, 7:00 a 11:00 p. m."},
+    {id:"calc", name:"Cálculo 1",                      when:"Jueves 7:00 a 9:00 p. m. y sábados 9:00 a. m. a 12:00 p. m."}
+  ];
+  var LS_KEY = "faltas-state";
+  var state = null;
+  try { state = JSON.parse(localStorage.getItem(LS_KEY)); } catch(e){}
+  if(!state || !state.faltas) state = {faltas:{prog:[],bd:[],calc:[]},updated:0};
+  COURSES.forEach(function(c){ if(!Array.isArray(state.faltas[c.id])) state.faltas[c.id]=[]; });
+
+  var statusEl = document.getElementById("status");
+  function setStatus(t){ statusEl.textContent = t; }
+
+  function fmt(iso){
+    var p = iso.split("-");
+    var d = new Date(+p[0], +p[1]-1, +p[2]);
+    try { return d.toLocaleDateString("es-PE",{weekday:"short", day:"numeric", month:"short"}); }
+    catch(e){ return iso; }
+  }
+  function todayISO(){
+    var d = new Date();
+    return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  }
+  var CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+
+  function render(){
+    var list = document.getElementById("list");
+    list.innerHTML = "";
+    COURSES.forEach(function(c){
+      var f = state.faltas[c.id].slice().sort();
+      var n = f.length;
+      var card = document.createElement("section");
+      card.className = "course";
+      card.style.setProperty("--c","var(--"+c.id+")");
+
+      var h = document.createElement("h2"); h.textContent = c.name; card.appendChild(h);
+      var w = document.createElement("p"); w.className="when"; w.textContent = c.when; card.appendChild(w);
+
+      if(n >= MAX){
+        var b = document.createElement("div"); b.className="banner";
+        b.textContent = n === MAX ? "Llegaste al límite: no puedes faltar más." : "Pasaste el límite por " + (n-MAX) + (n-MAX===1?" falta.":" faltas.");
+        card.appendChild(b);
+      }
+
+      var slots = document.createElement("div"); slots.className="slots";
+      for(var i=0;i<Math.max(MAX,n);i++){
+        var s = document.createElement("div");
+        s.className = "slot" + (i<n ? " on":"") + (i>=MAX ? " over":"");
+        s.innerHTML = CHECK;
+        slots.appendChild(s);
+      }
+      var cnt = document.createElement("span");
+      cnt.className = "count" + (n>=MAX ? " full":"");
+      var left = MAX - n;
+      cnt.textContent = left > 0 ? (left === 1 ? "Te queda 1" : "Te quedan " + left) : n + " de " + MAX;
+      slots.appendChild(cnt);
+      card.appendChild(slots);
+
+      var ul = document.createElement("ul"); ul.className="dates";
+      if(n===0){
+        var li0=document.createElement("li"); li0.className="hint"; li0.textContent="Sin faltas por ahora."; ul.appendChild(li0);
+      }
+      f.forEach(function(iso){
+        var li=document.createElement("li");
+        var bt=document.createElement("button"); bt.type="button";
+        bt.textContent = fmt(iso) + "  ✕";
+        bt.setAttribute("aria-label","Borrar falta del "+fmt(iso));
+        bt.onclick=function(){ askDelete(c, iso); };
+        li.appendChild(bt); ul.appendChild(li);
+      });
+      card.appendChild(ul);
+
+      var add = document.createElement("button");
+      add.type="button"; add.className="add"; add.textContent="Registrar falta";
+      add.onclick=function(){ askAdd(c); };
+      card.appendChild(add);
+      list.appendChild(card);
+    });
+  }
+
+  var dlg = document.getElementById("dlg");
+  var okBtn = document.getElementById("okBtn");
+  var pending = null;
+  document.getElementById("cancelBtn").onclick = function(){ dlg.close(); };
+
+  function askAdd(c){
+    dlg.style.setProperty("--c","var(--"+c.id+")");
+    document.getElementById("dlgTitle").textContent = "Registrar falta";
+    document.getElementById("dlgText").textContent = c.name;
+    document.getElementById("dlgDate").style.display = "";
+    document.getElementById("dateIn").value = todayISO();
+    okBtn.textContent = "Guardar falta"; okBtn.classList.remove("del");
+    pending = function(){
+      var v = document.getElementById("dateIn").value;
+      if(!v) return;
+      state.faltas[c.id].push(v);
+      commit("Falta registrada.");
+    };
+    dlg.showModal();
+  }
+  function askDelete(c, iso){
+    dlg.style.setProperty("--c","var(--"+c.id+")");
+    document.getElementById("dlgTitle").textContent = "Borrar falta";
+    document.getElementById("dlgText").textContent = c.name + ", " + fmt(iso);
+    document.getElementById("dlgDate").style.display = "none";
+    okBtn.textContent = "Borrar"; okBtn.classList.add("del");
+    pending = function(){
+      var arr = state.faltas[c.id];
+      var i = arr.indexOf(iso);
+      if(i>-1) arr.splice(i,1);
+      commit("Falta borrada.");
+    };
+    dlg.showModal();
+  }
+  okBtn.onclick = function(){ dlg.close(); if(pending){ var p=pending; pending=null; p(); } };
+
+  function commit(msg){
+    state.updated = Date.now();
+    try { localStorage.setItem(LS_KEY, JSON.stringify(state)); setStatus(msg + " Guardado."); }
+    catch(e){ setStatus("No se pudo guardar en este teléfono."); }
+    render();
+  }
+
+  render();
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){ navigator.serviceWorker.register("sw.js").catch(function(){}); });
+  }
+})();
+</script>
+</body>
+</html>
